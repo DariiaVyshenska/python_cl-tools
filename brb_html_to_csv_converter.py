@@ -1,6 +1,6 @@
 """Script that transforms brb comparison .html table to .csv table.
 
-On command line provide a) absolute path/name of .html file(s) that need
+From a command line provide a) absolute path/name of .html file(s) that need
 to be converted to .csv files; b) --fc reverse -> if fold change value
 should be reversed; no --fc argument if fold change should remain intact.
 This code will accept only .html files, it will alter a header, remove

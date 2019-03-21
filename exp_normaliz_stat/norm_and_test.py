@@ -102,7 +102,10 @@ if __name__ == "__main__":
     
     parser.add_argument("--st_test", "-stT", type=str, required=True, \
                         nargs=1, help="T-test type: 'parametric' for Welch "+\
-                        " t-test, or 'non-parametric' for Mann-Whitney test.")
+                        "two-sided t-test (scipy.stats.ttest_ind), " + \
+                        "or 'non-parametric' for Mann-Whitney two-sided " + \
+                        "test with no continuity correction " + \
+                        "(scipy.stats.mannwhitneyu)")
     
     if len(sys.argv)==1:
         parser.print_help(sys.stderr)

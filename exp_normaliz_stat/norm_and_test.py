@@ -6,13 +6,13 @@ Created on Wed Feb 20 14:50:13 2019
 """
 # FUNCTIONS
 # takes files from arguments and collapses them into one table per experiment
-def collapse_files(data, mapping):
+def collapse_files(data, mapping, count):
     data_f = pd.read_csv(data, index_col = 0).T
     data_f.index.names = ['sample']
     map_f = pd.read_csv(mapping, header=None)
     map_f.columns = ['sample', 'group']
     map_f.set_index('sample', inplace=True)
-    map_f['expt'] = 1
+    map_f['expt'] = count+1
     dm = data_f.join(map_f, how='outer')
     dm.set_index(['expt', 'group'],append = True, inplace=True)
     dm = dm.reorder_levels([1, 2, 0])
@@ -112,6 +112,8 @@ if __name__ == "__main__":
 
 
     if len(args.d_file) == len(args.m_file):
+        
+        # setting several operators to shorter names for shorter scripting
         contr_g = args.control[0]
         operator = args.test_parameter[0]
         operatorT = args.st_test[0]
@@ -119,9 +121,9 @@ if __name__ == "__main__":
         # combining mapping and data files into one table
         for count, d_file in enumerate(args.d_file):
             if count == 0:
-                full_table = collapse_files(d_file, args.m_file[count])
+                full_table = collapse_files(d_file, args.m_file[count], count)
             elif count > 0:
-               t_table =  collapse_files(d_file, args.m_file[count])
+               t_table =  collapse_files(d_file, args.m_file[count], count)
                full_table = full_table.append(t_table)
         # next - for each expt, only for treatment index do mean or median test 
         # to get the parameter for each column

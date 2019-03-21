@@ -107,10 +107,11 @@ if __name__ == "__main__":
                         "test with no continuity correction " + \
                         "(scipy.stats.mannwhitneyu)")
     
+    # handling no arguments
     if len(sys.argv)==1:
         parser.print_help(sys.stderr)
-        sys.exit(1)
-    
+        sys.exit()
+
     args = parser.parse_args()
 
 
@@ -134,8 +135,8 @@ if __name__ == "__main__":
         m_normz = dispatch_if(operator, c_all.groupby(level='expt', axis=0))
         nfull_table = full_table.subtract(m_normz, axis=1,level='expt')
         
-        # next - do statistical comparison of pooled groups (each) to the control 
-        # pooled group
+        # next - do statistical comparison of pooled groups (each) to the  
+        # control pooled group
         test_table = nfull_table.droplevel([0,2])
         pvalues = pval_calc(table_to_dic(test_table), set(test_table.index))
         pvalues = r_name(table=pvalues, parameter='pvalue')
@@ -145,13 +146,15 @@ if __name__ == "__main__":
                                                            axis=0))
         table_m = r_name(table=table_m, parameter=operator)
         
-        # export normalized table and table with calculated parameters & p-values
+        # export normalized table and table with calculated parameters 
+        # & p-values
         nfull_table.T.to_csv (r'normalized_full_table.csv', index=True, \
                               header=True)
         table_m.append(pvalues).T.to_csv(r'parameters_table.csv',\
                                    index=True, header=True)
 
     else:
-        print("Data and mapping files must be provided in pairs in " + \
-              "respective order")
-        quit()
+        print('\n\n' + "Error: Data and mapping files must be provided " + \
+              "in pairs in respective order." + '\n\n')
+        parser.print_help(sys.stderr)
+        sys.exit()

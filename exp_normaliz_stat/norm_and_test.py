@@ -31,7 +31,7 @@ def dispatch_if_T(operatorT, x, y):
     if operatorT == 'parametric':
         return ttest_ind(x, y, equal_var = False)[1]
     elif operatorT == 'non-parametric':
-        return mannwhitneyu(x,y, use_continuity=True, \
+        return mannwhitneyu(x,y, use_continuity=False, \
                             alternative='two-sided')[1]
     else:
         return None

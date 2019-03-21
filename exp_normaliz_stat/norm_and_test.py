@@ -29,10 +29,9 @@ def dispatch_if(operator, x):
 
 def dispatch_if_T(operatorT, x, y):
     if operatorT == 'parametric':
-        return ttest_ind(x, y, equal_var = False)[1]
+        return list(r.r['wt'](FloatVector(x),FloatVector(y)))[0]
     elif operatorT == 'non-parametric':
-        return mannwhitneyu(x,y, use_continuity=False, \
-                            alternative='two-sided')[1]
+        return list(r.r['wx'](FloatVector(x),FloatVector(y)))[0]
     else:
         return None
 
@@ -74,14 +73,15 @@ if __name__ == "__main__":
     
     try:
         import pandas as pd
-        from scipy.stats import ttest_ind
-        from scipy.stats import mannwhitneyu
         import argparse
         import sys
+        from rpy2 import robjects as r
+        from rpy2.robjects.vectors import FloatVector
+        r.r.source('r_statfun.R')
 
     except ModuleNotFoundError:
         print("This script requires packages: sys, pandas, argparse and \
-        scipy.stats!\n")
+        scipy.stats.\n")
     
     parser = argparse.ArgumentParser()
 

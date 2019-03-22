@@ -1,8 +1,7 @@
 # -*- coding: utf-8 -*-
 """
-Created on Wed Feb 20 14:50:13 2019
-
 @author: Dariia Vyshenska
+
 """
 # FUNCTIONS
 # takes files from arguments and collapses them into one table per experiment
@@ -102,10 +101,9 @@ if __name__ == "__main__":
     
     parser.add_argument("--st_test", "-stT", type=str, required=True, \
                         nargs=1, help="T-test type: 'parametric' for Welch "+\
-                        "two-sided t-test (scipy.stats.ttest_ind), " + \
+                        "two-sided t-test (R t.test, default args), " + \
                         "or 'non-parametric' for Mann-Whitney two-sided " + \
-                        "test with no continuity correction " + \
-                        "(scipy.stats.mannwhitneyu)")
+                        "test (R wilcox.test, default args).")
     
     # handling no arguments
     if len(sys.argv)==1:

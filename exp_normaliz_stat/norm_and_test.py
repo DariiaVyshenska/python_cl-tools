@@ -125,31 +125,42 @@ if __name__ == "__main__":
             if count == 0:
                 full_table = collapse_files(d_file, args.m_file[count], count)
             elif count > 0:
-               t_table =  collapse_files(d_file, args.m_file[count], count)
-               full_table = full_table.append(t_table)
+                t_table =  collapse_files(d_file, args.m_file[count], count)
+                full_table = full_table.append(t_table)
         # next - for each expt, only for treatment index do mean or median test 
         # to get the parameter for each column
         c_all = full_table.loc[pd.IndexSlice[:, contr_g],:]
         m_normz = dispatch_if(operator, c_all.groupby(level='expt', axis=0))
         nfull_table = full_table.subtract(m_normz, axis=1,level='expt')
         
-        # next - do statistical comparison of pooled groups (each) to the  
+        # statistical comparison of pooled groups (each) to the  
         # control pooled group
         test_table = nfull_table.droplevel([0,2])
         pvalues = pval_calc(table_to_dic(test_table), set(test_table.index))
         pvalues = r_name(table=pvalues, parameter='pvalue')
         
-        # merging parameters table into second output table
+        # getting fdr values for each readout
+        pvalues_noC = pvalues.drop(index=contr_g).sort_index()
+        fdr_table = (pd.DataFrame(index=set(test_table.index))
+        .drop(index=contr_g)
+        .sort_index())
+        fdr_table = (fdr_table
+                     .set_index([fdr_table.index, ['fdr']*len(fdr_table)]))
+        fdr_table.index.names = ['group', 'parameter']
+        for i in pvalues_noC:
+            fdr_table[i] = r.r['fdr'](FloatVector(pvalues_noC[i]))
+            
+        # getting parameters table for second output table
         table_m = dispatch_if(operator,nfull_table.groupby(level='group', \
                                                            axis=0))
         table_m = r_name(table=table_m, parameter=operator)
         
-        # export normalized table and table with calculated parameters 
-        # & p-values
+        # export normalized table and table with calculated parameters,
+        # p-values & fdr values
         nfull_table.T.to_csv (r'normalized_full_table.csv', index=True, \
                               header=True)
-        table_m.append(pvalues).T.to_csv(r'parameters_table.csv',\
-                                   index=True, header=True)
+        (table_m.append(pvalues).append(fdr_table).T
+         .to_csv(r'parameters_table.csv', index=True, header=True))
 
     else:
         print('\n\n' + "Error: Data and mapping files must be provided " + \

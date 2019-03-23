@@ -6,9 +6,17 @@
 # FUNCTIONS
 # takes files from arguments and collapses them into one table per experiment
 def collapse_files(data, mapping, count):
-    data_f = pd.read_csv(data, index_col = 0).T
+    try:
+        data_f = pd.read_csv(data, index_col = 0).T
+    except FileNotFoundError:
+        print("ERROR: file ", data, " does not exist!\n")
+        sys.exit()
+    try:
+        map_f = pd.read_csv(mapping, header=None)
+    except FileNotFoundError:
+        print("ERROR: file ", mapping, " does not exist!\n")
+        sys.exit()
     data_f.index.names = ['sample']
-    map_f = pd.read_csv(mapping, header=None)
     map_f.columns = ['sample', 'group']
     map_f.set_index('sample', inplace=True)
     map_f['expt'] = count+1

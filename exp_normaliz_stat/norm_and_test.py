@@ -2,6 +2,43 @@
 """
 @author: Dariia Vyshenska
 
+This script is created to combine multiple readouts from different experiments,
+normalize the data experiment-wise 
+(each_measurement minus control_group_mean_or_median), pool normalized data 
+treatment-wise, and run t-test on all treatment combinations with the control 
+treatment.
+Output: table with normalized data, table with mean/median per treatment 
+combined with t-test p-values and  fdr values. Both tables are in .csv format.
+
+Build with: python 3.6.4, R 3.5.1
+Require: sys, pandas(0.24.0), argparse(1.1), rpy2, R (require library stats 
+version 3.5.1)
+Require: r_statfun.R (to be located in the same folder)
+
+usage: norm_and_test.py [-h] --d_file D_FILE [D_FILE ...] --m_file M_FILE
+                        [M_FILE ...] --control CONTROL --test_parameter
+                        TEST_PARAMETER --st_test ST_TEST
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --d_file D_FILE [D_FILE ...], -df D_FILE [D_FILE ...]
+                        Files with data: csv file with header. Header - unique
+                        sample identifiers. First column - name of the assay
+                        type.
+  --m_file M_FILE [M_FILE ...], -mf M_FILE [M_FILE ...]
+                        Mapping files, same order as for data files. csv
+                        files, no header. First column - unique sample
+                        identifiers. Second column - name of treatment group.
+  --control CONTROL, -C CONTROL
+                        Name of control treatment group.
+  --test_parameter TEST_PARAMETER, -tP TEST_PARAMETER
+                        Normalization parameter: 'mean' or 'median'.
+  --st_test ST_TEST, -stT ST_TEST
+                        T-test type: 'parametric' for Welch two-sided t-test
+                        (R t.test, default args), or 'non-parametric' for
+                        Mann-Whitney two-sided test (R wilcox.test, default
+                        args).
+
 """
 # FUNCTIONS
 # takes files from arguments and collapses them into one table per experiment
@@ -34,6 +71,7 @@ def dispatch_if(operator, x):
     else:
         return None
 
+# performs either parametric or non-parametric two-tailed two sample t-test
 def dispatch_if_T(operatorT, x, y):
     if operatorT == 'parametric':
         return list(r.r['wt'](FloatVector(x),FloatVector(y)))[0]
@@ -42,7 +80,7 @@ def dispatch_if_T(operatorT, x, y):
     else:
         return None
 
-# converting table into a dict of dict
+# converting table into a dict of dict-s
 def table_to_dic(test_table):
     clean_list = lambda list: [x for x in list if str(x) != 'nan']
     test_table_dic = dict()
@@ -54,7 +92,7 @@ def table_to_dic(test_table):
         del sub_dic
     return test_table_dic
 
-# getting p-values as separate table
+# getting p-values for all groups as a table
 def pval_calc(test_table_dic, groups):
     pval_table = pd.DataFrame(index=groups)
     for key in test_table_dic:
@@ -67,7 +105,7 @@ def pval_calc(test_table_dic, groups):
         del p
     return pval_table
 
-# adding parameter index and sorting the dataframe based on first index(group)
+# adding parameter index and sorting the dataframe based on first index (group)
 def r_name(table, parameter):
     new_table = (table.set_index([table.index, [parameter]* len(table)])
     .rename_axis(['group', 'parameter'])
@@ -89,7 +127,8 @@ if __name__ == "__main__":
     except ModuleNotFoundError:
         print("This script requires packages: sys, pandas, argparse and \
         scipy.stats.\n")
-    
+
+# parsing arguments
     parser = argparse.ArgumentParser()
 
     parser.add_argument("--d_file", "-df", type=str, required=True, nargs='+',\
@@ -120,7 +159,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-
+    # checking if each data file has corresponding mapping file and vice versa
     if len(args.d_file) == len(args.m_file):
         
         # setting several operators to shorter names for shorter scripting
@@ -135,8 +174,9 @@ if __name__ == "__main__":
             elif count > 0:
                 t_table =  collapse_files(d_file, args.m_file[count], count)
                 full_table = full_table.append(t_table)
-        # next - for each expt, only for treatment index do mean or median test 
-        # to get the parameter for each column
+        
+        # next - for each expt, only for treatment group do mean or median test 
+        # to get normalization parameter for each column
         c_all = full_table.loc[pd.IndexSlice[:, contr_g],:]
         m_normz = dispatch_if(operator, c_all.groupby(level='expt', axis=0))
         nfull_table = full_table.subtract(m_normz, axis=1,level='expt')
@@ -158,7 +198,7 @@ if __name__ == "__main__":
         for i in pvalues_noC:
             fdr_table[i] = r.r['fdr'](FloatVector(pvalues_noC[i]))
             
-        # getting parameters table for second output table
+        # getting parameters table for second output table (for all groups)
         table_m = dispatch_if(operator,nfull_table.groupby(level='group', \
                                                            axis=0))
         table_m = r_name(table=table_m, parameter=operator)

@@ -1,11 +1,15 @@
-This script is created to combine multiple readouts from different experiments, normalize the data experiment-wise
-(each_measurement - control_group_mean/median), pool normalized data treatment-wise, and run t-test on all
-treatment combinations with the control treatment.
-Output: table with normalized data, table with mean/median per treatment combined with t-test p-value. Both tables 
-are in .csv format.
-Require: sys, pandas(0.24.0), argparse(1.1) and scipy.stats(1.0.0).
+This script is created to combine multiple readouts from different experiments,
+normalize the data experiment-wise 
+(each_measurement minus control_group_mean_or_median), pool normalized data 
+treatment-wise, and run t-test on all treatment combinations with the control 
+treatment.
+Output: table with normalized data, table with mean/median per treatment 
+combined with t-test p-values and  fdr values. Both tables are in .csv format.
 
-NOTE: srcipt will be complimented with fdr calculations in future.
+Build with: python 3.6.4, R 3.5.1
+Require: sys, pandas(0.24.0), argparse(1.1), rpy2, R (require library stats 
+version 3.5.1)
+Require: r_statfun.R (to be located in the same folder)
 
 usage: norm_and_test.py [-h] --d_file D_FILE [D_FILE ...] --m_file M_FILE
                         [M_FILE ...] --control CONTROL --test_parameter
@@ -27,6 +31,6 @@ optional arguments:
                         Normalization parameter: 'mean' or 'median'.
   --st_test ST_TEST, -stT ST_TEST
                         T-test type: 'parametric' for Welch two-sided t-test
-                        (scipy.stats.ttest_ind), or 'non-parametric' for Mann-
-                        Whitney two-sided test with no continuity correction
-                        (scipy.stats.mannwhitneyu)
+                        (R t.test, default args), or 'non-parametric' for
+                        Mann-Whitney two-sided test (R wilcox.test, default
+                        args).

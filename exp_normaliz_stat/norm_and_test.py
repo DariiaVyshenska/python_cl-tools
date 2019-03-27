@@ -16,8 +16,8 @@ version 3.5.1)
 Require: r_statfun.R (to be located in the same folder)
 
 usage: norm_and_test.py [-h] --d_file D_FILE [D_FILE ...] --m_file M_FILE
-                        [M_FILE ...] --control CONTROL --test_parameter
-                        TEST_PARAMETER --st_test ST_TEST
+                        [M_FILE ...] --control CONTROL --test_statistic
+                        TEST_STATISTIC --st_test ST_TEST
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -31,8 +31,8 @@ optional arguments:
                         identifiers. Second column - name of treatment group.
   --control CONTROL, -C CONTROL
                         Name of control treatment group.
-  --test_parameter TEST_PARAMETER, -tP TEST_PARAMETER
-                        Normalization parameter: 'mean' or 'median'.
+  --test_statistic TEST_STATISTIC, -tP TEST_STATISTIC
+                        Normalization statistic: 'mean' or 'median'.
   --st_test ST_TEST, -stT ST_TEST
                         T-test type: 'parametric' for Welch two-sided t-test
                         (R t.test, default args), or 'non-parametric' for
@@ -105,10 +105,10 @@ def pval_calc(test_table_dic, groups):
         del p
     return pval_table
 
-# adding parameter index and sorting the dataframe based on first index (group)
-def r_name(table, parameter):
-    new_table = (table.set_index([table.index, [parameter]* len(table)])
-    .rename_axis(['group', 'parameter'])
+# adding statistic index and sorting the dataframe based on first index (group)
+def r_name(table, statistic):
+    new_table = (table.set_index([table.index, [statistic]* len(table)])
+    .rename_axis(['group', 'statistic'])
     .sort_index(axis=0, level=0))
     return new_table
 
@@ -142,8 +142,8 @@ if __name__ == "__main__":
                         "Second column - name of treatment group.")
     parser.add_argument("--control", "-C", type=str, required=True, nargs=1, \
                         help="Name of control treatment group.")
-    parser.add_argument("--test_parameter", "-tP", type=str, required=True, \
-                        nargs=1, help="Normalization parameter: " + \
+    parser.add_argument("--test_statistic", "-tP", type=str, required=True, \
+                        nargs=1, help="Normalization statistic: " + \
                         "'mean' or 'median'.")
     
     parser.add_argument("--st_test", "-stT", type=str, required=True, \
@@ -164,7 +164,7 @@ if __name__ == "__main__":
         
         # setting several operators to shorter names for shorter scripting
         contr_g = args.control[0]
-        operator = args.test_parameter[0]
+        operator = args.test_statistic[0]
         operatorT = args.st_test[0]
         
         # combining mapping and data files into one table
@@ -176,7 +176,7 @@ if __name__ == "__main__":
                 full_table = full_table.append(t_table)
         
         # next - for each expt, only for treatment group do mean or median test 
-        # to get normalization parameter for each column
+        # to get normalization statistic for each column
         c_all = full_table.loc[pd.IndexSlice[:, contr_g],:]
         m_normz = dispatch_if(operator, c_all.groupby(level='expt', axis=0))
         nfull_table = full_table.subtract(m_normz, axis=1,level='expt')
@@ -185,7 +185,7 @@ if __name__ == "__main__":
         # control pooled group
         test_table = nfull_table.droplevel([0,2])
         pvalues = pval_calc(table_to_dic(test_table), set(test_table.index))
-        pvalues = r_name(table=pvalues, parameter='pvalue')
+        pvalues = r_name(table=pvalues, statistic='pvalue')
         
         # getting fdr values for each readout
         pvalues_noC = pvalues.drop(index=contr_g).sort_index()
@@ -194,21 +194,21 @@ if __name__ == "__main__":
         .sort_index())
         fdr_table = (fdr_table
                      .set_index([fdr_table.index, ['fdr']*len(fdr_table)]))
-        fdr_table.index.names = ['group', 'parameter']
+        fdr_table.index.names = ['group', 'statistic']
         for i in pvalues_noC:
             fdr_table[i] = r.r['fdr'](FloatVector(pvalues_noC[i]))
             
-        # getting parameters table for second output table (for all groups)
+        # getting statistics table for second output table (for all groups)
         table_m = dispatch_if(operator,nfull_table.groupby(level='group', \
                                                            axis=0))
-        table_m = r_name(table=table_m, parameter=operator)
+        table_m = r_name(table=table_m, statistic=operator)
         
-        # export normalized table and table with calculated parameters,
+        # export normalized table and table with calculated statistics,
         # p-values & fdr values
         nfull_table.T.to_csv (r'normalized_full_table.csv', index=True, \
                               header=True)
         (table_m.append(pvalues).append(fdr_table).T
-         .to_csv(r'parameters_table.csv', index=True, header=True))
+         .to_csv(r'statistics_table.csv', index=True, header=True))
 
     else:
         print('\n\n' + "Error: Data and mapping files must be provided " + \

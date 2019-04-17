@@ -183,7 +183,9 @@ if __name__ == "__main__":
         
         # statistical comparison of pooled groups (each) to the  
         # control pooled group
-        test_table = nfull_table.droplevel([0,2])
+        test_table = nfull_table.copy()
+        test_table.index = test_table.index.droplevel([0,2])
+        #test_table = nfull_table.droplevel([0,2])
         pvalues = pval_calc(table_to_dic(test_table), set(test_table.index))
         pvalues = r_name(table=pvalues, statistic='pvalue')
         

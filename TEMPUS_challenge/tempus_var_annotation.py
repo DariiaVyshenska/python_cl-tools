@@ -168,7 +168,6 @@ def conv_file(extr_file):
             fileO.write(new_line)
 
     fileI.close()
-    fileO.close()
 
 
 usage = ['Usage:',

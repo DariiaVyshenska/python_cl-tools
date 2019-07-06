@@ -8,6 +8,7 @@ from functools import partial
 import time
 import argparse
 import sys
+from itertools import compress
 
 def dispatch_if(operator, x, y):
     """dispatch function for type of statistical test"""
@@ -19,6 +20,8 @@ def dispatch_if(operator, x, y):
         return None
 
 def cor_fun(operator, row1, row2):
+    """function to calculate correlations between two vectors,
+    outputs NAs if the data is all zeros"""
     if sum(row1) == 0 or sum(row2) == 0:
         return "NA", "NA"
     else:
@@ -26,6 +29,7 @@ def cor_fun(operator, row1, row2):
         return coef, p
 
 def calc_cor(operator, data_v2, data_v1):
+    """function to calculate correlations for two tables, uses cor_fun()"""
     # getting table of correlation coefficients and their p-values
     df_corr = data_v1.apply(lambda y: \
         data_v2.apply(lambda x: cor_fun(operator, y, x), axis=1), axis=1)
@@ -35,28 +39,25 @@ def calc_cor(operator, data_v2, data_v1):
     val_as_list = list(chain.from_iterable(df_corr.values))
     cor, p = zip(*val_as_list)
     
-# TRY TO IMPROVE THIS PART AND THEN MOVE ON (EVERYTHING ELSE IS GOOD TO GO):
-    # creating comparison pair names (from rows and columns of df)
     r = np.array(df_corr.index)
     c = np.array(df_corr.columns)
     
-    name1, name2, names = list(), list(), list()
+    name1, name2, names = np.empty(0), np.empty(0), list()
     
     for x in r:
         for y in c:
-            name1.append(x)
-            name2.append(y)
+            name1 = np.append(name1, x)
+            name2 = np.append(name2, y)
             names.append(x + "<==>" + y)
-#######################################################
-            
+    
     comb_output = list(zip(name1, name2, names, cor, p))
+    comb_output = list(compress(comb_output, name1 != name2))
     return comb_output
 
 
 # split one of the dataframes into chanks
 def df_chunking(df, chunksize):
     """Splits df into chunks, drops data of original df inplace"""
-
     count = 0 # Counter for chunks
     while len(df):
         count += 1
@@ -104,7 +105,7 @@ def main():
                         help="Files with data: csv file with a header. "+ \
                         "Header - unique sample identifiers. " + \
                         "First column - variable ID.")
-    parser.add_argument("--v_file", "-vf", type=str, required=True, nargs='+', \
+    parser.add_argument("--v_file", "-vf", type=str, required=True, nargs='+', 
                         help="Files with variables of interest: csv files" + \
                         "without a header. Contain one column of variable" +\
                         " IDs from data file")
@@ -138,7 +139,8 @@ def main():
         sys.exit()
 
     args = parser.parse_args()
-
+    
+    # assigning arguments for easier handling later
     arg_data = args.d_file[0]
     arg_mapfile = args.m_file[0]
     arg_v1 = args.v_file[0]
@@ -150,16 +152,14 @@ def main():
     arg_analys = args.a_file[0]
     fout_n = args.out_name[0]
 
-    # reading files
+    # reading input files
     data_table = pd.read_csv(arg_data, header=0, index_col=0)
     v1=np.array((pd.read_csv(arg_v1, header=None))[0])
     v2=np.array((pd.read_csv(arg_v2, header=None))[0])
     analysis_file = pd.read_csv(arg_analys, header=None)
     maptable = pd.read_csv(arg_mapfile, header=0)
     
-    
-    # getting names for samples filtering
-    
+    # doing requested analysis based on analysis file
     if "correlation" in np.array(analysis_file[3]):
         for cor_group in analysis_file[0][analysis_file[3] == "correlation"]:
             # creating two dataframes for correlations
@@ -171,15 +171,19 @@ def main():
                 data_v1 = data_table.loc[v2, samples].copy()
                 data_v2 = data_table.loc[v1, samples]
                 
+            # creating name for output correlation file
             f_name = str(fout_n) +str(cor_group) + "_corrout.csv"
             
+            # multi-core (parallel) analysis
             if cores > 1:
                 start = time.time()
-                df_results = run_corr_parallel(data_v1, data_v2, cores, operator)
+                df_results = run_corr_parallel(data_v1, data_v2, cores, \
+                                               operator)
                 end = time.time()
                 print(end - start)
                 print('\n')
-                
+            
+            # single core analysis
             elif cores == 1: 
                 start = time.time()
                 df_results = pd.DataFrame(calc_cor(operator, data_v2, data_v1))
@@ -187,11 +191,12 @@ def main():
                 print(end - start)
                 print('\n')
             
-            df_results.columns = ['name1', 'name2', 'pairName', operator, 'p-value']
-            # removing self-loops
-            no_loops = df_results.loc[df_results.name1 != df_results.name2].copy()
+            # assigning final names to the output table columns
+            df_results.columns = ['name1', 'name2', 'pairName', operator, \
+                                  'p-value']
             print("DONE!")
-            no_loops.to_csv(f_name, index=False)
+            # writing the ouput talbe to .csv file
+            df_results.to_csv(f_name, index=False)
                 
     else:
         pass
